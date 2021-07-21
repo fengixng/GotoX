@@ -34,7 +34,8 @@ from .CFWFetch import cfw_fetch
 from .GAEFetch import (
     check_appid_exists, mark_badappid, make_errinfo, gae_urlfetch )
 from .FilterUtil import (
-    set_temp_action, set_temp_connect_action, set_temp_fakesni,
+    set_temp_action, set_temp_connect_action,
+    set_temp_fakesni, unset_temp_fakesni,
     get_action, get_connect_action )
 from .FilterConfig import action_filters
 
@@ -631,7 +632,14 @@ class AutoProxyHandler(BaseHTTPRequestHandler):
                 elif e.args[0] not in bypass_errno:
                     logging.warning('%s do_DIRECT "%s %s" 失败：%r',
                                     self.address_string(response or e), self.command, self.url, e)
-                    raise e
+                    bypass = False
+                    if 'SSL' in str(e):
+                        host = 'https://' + self.host
+                        if unset_temp_fakesni(host):
+                            logging.warning('%r 的 "FAKESNI" 临时规则不适用，已取消。', host)
+                            bypass = retry == 0
+                    if not bypass:
+                        raise e
             finally:
                 if self.ws:
                     return
